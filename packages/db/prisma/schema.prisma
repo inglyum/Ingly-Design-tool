@@ -1,0 +1,595 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// TENANTS
+// ============================================================
+model Tenant {
+  id          String   @id @default(uuid())
+  slug        String   @unique
+  companyName String   @map("company_name")
+  email       String
+  phone       String?
+  vatNumber   String?  @map("vat_number")
+  country     String   @default("IT")
+  timezone    String   @default("Europe/Rome")
+  locale      String   @default("it-IT")
+  logoUrl     String?  @map("logo_url")
+  status      String   @default("trial") // trial, active, suspended, banned, churned
+  trialEndsAt DateTime? @map("trial_ends_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  users         User[]
+  subscriptions Subscription[]
+  licenses      License[]
+  devices       Device[]
+
+  @@map("tenants")
+}
+
+// ============================================================
+// PLANS
+// ============================================================
+model Plan {
+  id                String   @id @default(uuid())
+  name              String
+  slug              String   @unique
+  priceMonthly      Decimal  @map("price_monthly") @db.Decimal(10, 2)
+  priceYearly       Decimal? @map("price_yearly") @db.Decimal(10, 2)
+  currency          String   @default("EUR")
+  maxUsers          Int      @default(1) @map("max_users")
+  maxStorageGb      Int      @default(2) @map("max_storage_gb")
+  aiTokensMonthly   Int      @default(10000) @map("ai_tokens_monthly")
+  modulesCount      Int      @default(30) @map("modules_count")
+  modulesList       Json     @default("[]") @map("modules_list")
+  features          Json     @default("{}") @map("features")
+  isActive          Boolean  @default(true) @map("is_active")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  subscriptions Subscription[]
+
+  @@map("plans")
+}
+
+// ============================================================
+// SUBSCRIPTIONS
+// ============================================================
+model Subscription {
+  id                   String    @id @default(uuid())
+  tenantId             String    @map("tenant_id")
+  planId               String    @map("plan_id")
+  status               String    @default("trialing") // trialing, active, past_due, canceled, unpaid
+  billingCycle         String    @default("monthly") @map("billing_cycle")
+  currentPeriodStart   DateTime  @map("current_period_start")
+  currentPeriodEnd     DateTime  @map("current_period_end")
+  canceledAt           DateTime? @map("canceled_at")
+  stripeSubscriptionId String?   @map("stripe_subscription_id")
+  stripeCustomerId     String?   @map("stripe_customer_id")
+  metadata             Json      @default("{}")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  tenant  Tenant @relation(fields: [tenantId], references: [id])
+  plan    Plan   @relation(fields: [planId], references: [id])
+
+  @@map("subscriptions")
+}
+
+// ============================================================
+// USERS
+// ============================================================
+model User {
+  id                String    @id @default(uuid())
+  tenantId          String    @map("tenant_id")
+  email             String
+  username          String
+  passwordHash      String    @map("password_hash")
+  fullName          String    @map("full_name")
+  firstName         String?   @map("first_name")
+  lastName          String?   @map("last_name")
+  avatarUrl         String?   @map("avatar_url")
+  phone             String?
+  role              String    @default("user") // owner, admin, manager, user, viewer
+  status            String    @default("active") // active, inactive, suspended
+  modulesAllowed    Json      @default("[]") @map("modules_allowed")
+  preferences       Json      @default("{}")
+  mfaSecret         String?   @map("mfa_secret")
+  mfaEnabled        Boolean   @default(false) @map("mfa_enabled")
+  emailVerified     Boolean   @default(false) @map("email_verified")
+  lastLoginAt       DateTime? @map("last_login_at")
+  passwordChangedAt DateTime  @default(now()) @map("password_changed_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id])
+  sessions Session[]
+
+  @@unique([tenantId, email])
+  @@unique([tenantId, username])
+  @@map("users")
+}
+
+// ============================================================
+// SESSIONS
+// ============================================================
+model Session {
+  id           String    @id @default(uuid())
+  userId       String    @map("user_id")
+  refreshToken String    @unique @map("refresh_token")
+  deviceId     String?   @map("device_id")
+  ipAddress    String?   @map("ip_address")
+  userAgent    String?   @map("user_agent")
+  expiresAt    DateTime  @map("expires_at")
+  lastActivity DateTime  @default(now()) @map("last_activity")
+  isRevoked    Boolean   @default(false) @map("is_revoked")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+// ============================================================
+// LICENSES
+// ============================================================
+model License {
+  id             String    @id @default(uuid())
+  tenantId       String    @map("tenant_id")
+  subscriptionId String    @map("subscription_id")
+  licenseKey     String    @unique @map("license_key")
+  status         String    @default("active") // active, suspended, revoked, expired
+  maxDevices     Int       @default(3) @map("max_devices")
+  validFrom      DateTime  @map("valid_from")
+  validUntil     DateTime? @map("valid_until")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  tenant  Tenant   @relation(fields: [tenantId], references: [id])
+  devices Device[]
+
+  @@map("licenses")
+}
+
+// ============================================================
+// DEVICES
+// ============================================================
+model Device {
+  id          String   @id @default(uuid())
+  licenseId   String   @map("license_id")
+  tenantId    String   @map("tenant_id")
+  userId      String   @map("user_id")
+  fingerprint String
+  deviceName  String?  @map("device_name")
+  deviceType  String?  @map("device_type")
+  browser     String?
+  os          String?
+  ipAddress   String?  @map("ip_address")
+  lastSeenAt  DateTime @default(now()) @map("last_seen_at")
+  isTrusted   Boolean  @default(false) @map("is_trusted")
+  isBlocked   Boolean  @default(false) @map("is_blocked")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  license License @relation(fields: [licenseId], references: [id])
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+
+  @@map("devices")
+}
+
+// ============================================================
+// ADMIN USERS
+// ============================================================
+model AdminUser {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String    @map("password_hash")
+  fullName     String    @map("full_name")
+  role         String    @default("admin") // superadmin, admin, support, billing, readonly
+  isActive     Boolean   @default(true) @map("is_active")
+  mfaSecret    String?   @map("mfa_secret")
+  mfaEnabled   Boolean   @default(false) @map("mfa_enabled")
+  lastLoginAt  DateTime? @map("last_login_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  adminActions AdminAction[]
+
+  @@map("admin_users")
+}
+
+// ============================================================
+// ADMIN ACTIONS LOG
+// ============================================================
+model AdminAction {
+  id          String   @id @default(uuid())
+  adminId     String   @map("admin_id")
+  tenantId    String?  @map("tenant_id")
+  action      String
+  entityType  String?  @map("entity_type")
+  entityId    String?  @map("entity_id")
+  beforeState Json?    @map("before_state")
+  afterState  Json?    @map("after_state")
+  ipAddress   String?  @map("ip_address")
+  userAgent   String?  @map("user_agent")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  admin AdminUser @relation(fields: [adminId], references: [id])
+
+  @@map("admin_actions")
+}
+
+// ============================================================
+// AUDIT LOGS (per tenant)
+// ============================================================
+model AuditLog {
+  id         String   @id @default(uuid())
+  tenantId   String   @map("tenant_id")
+  userId     String?  @map("user_id")
+  entityType String   @map("entity_type")
+  entityId   String?  @map("entity_id")
+  action     String
+  changes    Json     @default("{}")
+  ipAddress  String?  @map("ip_address")
+  userAgent  String?  @map("user_agent")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([tenantId])
+  @@index([tenantId, entityType, entityId])
+  @@map("audit_logs")
+}
+
+// ============================================================
+// CLIENTS
+// ============================================================
+model Client {
+  id           String    @id @default(uuid())
+  tenantId     String    @map("tenant_id")
+  code         String?
+  companyName  String?   @map("company_name")
+  firstName    String?   @map("first_name")
+  lastName     String?   @map("last_name")
+  email        String?
+  phone        String?
+  mobile       String?
+  address      String?
+  city         String?
+  zipCode      String?   @map("zip_code")
+  country      String    @default("IT")
+  vatNumber    String?   @map("vat_number")
+  fiscalCode   String?   @map("fiscal_code")
+  sdiCode      String?   @map("sdi_code")
+  pecEmail     String?   @map("pec_email")
+  type         String    @default("b2c") // b2b, b2c
+  segment      String?
+  tags         String[]  @default([])
+  notes        String?
+  source       String?
+  isActive     Boolean   @default(true) @map("is_active")
+  totalRevenue Decimal   @default(0) @map("total_revenue") @db.Decimal(12, 2)
+  ordersCount  Int       @default(0) @map("orders_count")
+  lastOrderAt  DateTime? @map("last_order_at")
+  createdBy    String?   @map("created_by")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  orders Order[]
+  quotes Quote[]
+  sales  Sale[]
+
+  @@index([tenantId])
+  @@index([tenantId, email])
+  @@map("clients")
+}
+
+// ============================================================
+// PRODUCTS / CATALOG
+// ============================================================
+model Product {
+  id            String   @id @default(uuid())
+  tenantId      String   @map("tenant_id")
+  sku           String?
+  name          String
+  description   String?
+  category      String?
+  subcategory   String?
+  type          String?
+  material      String?
+  costPrice     Decimal  @default(0) @map("cost_price") @db.Decimal(10, 2)
+  salePrice     Decimal  @default(0) @map("sale_price") @db.Decimal(10, 2)
+  minPrice      Decimal  @default(0) @map("min_price") @db.Decimal(10, 2)
+  currency      String   @default("EUR")
+  unit          String   @default("pz")
+  images        Json     @default("[]")
+  tags          String[] @default([])
+  isActive      Boolean  @default(true) @map("is_active")
+  isCustomizable Boolean @default(false) @map("is_customizable")
+  leadTimeDays  Int      @default(0) @map("lead_time_days")
+  metadata      Json     @default("{}")
+  createdBy     String?  @map("created_by")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@map("products")
+}
+
+// ============================================================
+// INVENTORY
+// ============================================================
+model InventoryItem {
+  id             String    @id @default(uuid())
+  tenantId       String    @map("tenant_id")
+  productId      String?   @map("product_id")
+  sku            String?
+  name           String
+  category       String?
+  unit           String    @default("pz")
+  quantity       Decimal   @default(0) @db.Decimal(10, 3)
+  minQuantity    Decimal   @default(2) @map("min_quantity") @db.Decimal(10, 3)
+  reorderPoint   Decimal   @default(5) @map("reorder_point") @db.Decimal(10, 3)
+  unitCost       Decimal   @default(0) @map("unit_cost") @db.Decimal(10, 2)
+  location       String?
+  supplierId     String?   @map("supplier_id")
+  barcode        String?
+  notes          String?
+  lastRestockedAt DateTime? @map("last_restocked_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@map("inventory_items")
+}
+
+// ============================================================
+// ORDERS
+// ============================================================
+model Order {
+  id                    String    @id @default(uuid())
+  tenantId              String    @map("tenant_id")
+  orderNumber           String    @map("order_number")
+  clientId              String?   @map("client_id")
+  clientName            String?   @map("client_name")
+  quoteId               String?   @map("quote_id")
+  status                String    @default("backlog")
+  priority              String    @default("normal")
+  items                 Json      @default("[]")
+  totalAmount           Decimal   @default(0) @map("total_amount") @db.Decimal(12, 2)
+  currency              String    @default("EUR")
+  notes                 String?
+  internalNotes         String?   @map("internal_notes")
+  dueDate               DateTime? @map("due_date")
+  completedAt           DateTime? @map("completed_at")
+  deliveredAt           DateTime? @map("delivered_at")
+  productionTimeMinutes Int       @default(0) @map("production_time_minutes")
+  tags                  String[]  @default([])
+  attachments           Json      @default("[]")
+  metadata              Json      @default("{}")
+  assignedTo            String?   @map("assigned_to")
+  createdBy             String?   @map("created_by")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  client  Client?  @relation(fields: [clientId], references: [id])
+
+  @@unique([tenantId, orderNumber])
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("orders")
+}
+
+// ============================================================
+// QUOTES (Preventivi)
+// ============================================================
+model Quote {
+  id           String    @id @default(uuid())
+  tenantId     String    @map("tenant_id")
+  quoteNumber  String    @map("quote_number")
+  clientId     String?   @map("client_id")
+  clientName   String?   @map("client_name")
+  status       String    @default("draft") // draft, sent, accepted, rejected, expired
+  items        Json      @default("[]")
+  subtotal     Decimal   @default(0) @db.Decimal(12, 2)
+  taxRate      Decimal   @default(22) @map("tax_rate") @db.Decimal(5, 2)
+  taxAmount    Decimal   @default(0) @map("tax_amount") @db.Decimal(12, 2)
+  discount     Decimal   @default(0) @db.Decimal(10, 2)
+  totalAmount  Decimal   @default(0) @map("total_amount") @db.Decimal(12, 2)
+  currency     String    @default("EUR")
+  notes        String?
+  terms        String?
+  validUntil   DateTime? @map("valid_until")
+  pdfUrl       String?   @map("pdf_url")
+  sentAt       DateTime? @map("sent_at")
+  acceptedAt   DateTime? @map("accepted_at")
+  createdBy    String?   @map("created_by")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  client Client? @relation(fields: [clientId], references: [id])
+
+  @@unique([tenantId, quoteNumber])
+  @@index([tenantId])
+  @@map("quotes")
+}
+
+// ============================================================
+// SALES / INVOICES
+// ============================================================
+model Sale {
+  id            String    @id @default(uuid())
+  tenantId      String    @map("tenant_id")
+  invoiceNumber String    @map("invoice_number")
+  clientId      String?   @map("client_id")
+  clientName    String?   @map("client_name")
+  orderId       String?   @map("order_id")
+  quoteId       String?   @map("quote_id")
+  status        String    @default("da_pagare") // bozza, da_pagare, pagato, annullato, rimborso
+  paymentMethod String?   @map("payment_method")
+  items         Json      @default("[]")
+  subtotal      Decimal   @default(0) @db.Decimal(12, 2)
+  taxRate       Decimal   @default(22) @map("tax_rate") @db.Decimal(5, 2)
+  taxAmount     Decimal   @default(0) @map("tax_amount") @db.Decimal(12, 2)
+  discount      Decimal   @default(0) @db.Decimal(10, 2)
+  totalAmount   Decimal   @default(0) @map("total_amount") @db.Decimal(12, 2)
+  amountPaid    Decimal   @default(0) @map("amount_paid") @db.Decimal(12, 2)
+  currency      String    @default("EUR")
+  notes         String?
+  issueDate     DateTime  @default(now()) @map("issue_date")
+  dueDate       DateTime? @map("due_date")
+  paidAt        DateTime? @map("paid_at")
+  pdfUrl        String?   @map("pdf_url")
+  createdBy     String?   @map("created_by")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  client Client? @relation(fields: [clientId], references: [id])
+
+  @@unique([tenantId, invoiceNumber])
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("sales")
+}
+
+// ============================================================
+// CASHFLOW
+// ============================================================
+model CashflowEntry {
+  id            String   @id @default(uuid())
+  tenantId      String   @map("tenant_id")
+  type          String   // entrata, uscita
+  category      String?
+  subcategory   String?
+  description   String
+  amount        Decimal  @db.Decimal(12, 2)
+  currency      String   @default("EUR")
+  date          DateTime
+  paymentMethod String?  @map("payment_method")
+  reference     String?
+  saleId        String?  @map("sale_id")
+  supplierId    String?  @map("supplier_id")
+  isRecurring   Boolean  @default(false) @map("is_recurring")
+  notes         String?
+  tags          String[] @default([])
+  createdBy     String?  @map("created_by")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([tenantId, date])
+  @@index([tenantId, type])
+  @@map("cashflow_entries")
+}
+
+// ============================================================
+// PROJECTS
+// ============================================================
+model Project {
+  id          String    @id @default(uuid())
+  tenantId    String    @map("tenant_id")
+  name        String
+  description String?
+  clientId    String?   @map("client_id")
+  status      String    @default("active") // draft, active, on_hold, completed, archived
+  type        String?
+  tags        String[]  @default([])
+  files       Json      @default("[]")
+  thumbnailUrl String?  @map("thumbnail_url")
+  dueDate     DateTime? @map("due_date")
+  completedAt DateTime? @map("completed_at")
+  metadata    Json      @default("{}")
+  createdBy   String?   @map("created_by")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@map("projects")
+}
+
+// ============================================================
+// MATERIALS
+// ============================================================
+model Material {
+  id          String   @id @default(uuid())
+  tenantId    String   @map("tenant_id")
+  name        String
+  type        String?
+  supplier    String?
+  unit        String   @default("pz")
+  quantity    Decimal  @default(0) @db.Decimal(10, 3)
+  minQuantity Decimal  @default(1) @map("min_quantity") @db.Decimal(10, 3)
+  unitCost    Decimal  @default(0) @map("unit_cost") @db.Decimal(10, 2)
+  notes       String?
+  color       String?
+  tags        String[] @default([])
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@map("materials")
+}
+
+// ============================================================
+// SUPPLIERS
+// ============================================================
+model Supplier {
+  id           String   @id @default(uuid())
+  tenantId     String   @map("tenant_id")
+  name         String
+  contactName  String?  @map("contact_name")
+  email        String?
+  phone        String?
+  website      String?
+  address      String?
+  vatNumber    String?  @map("vat_number")
+  paymentTerms Int      @default(30) @map("payment_terms")
+  currency     String   @default("EUR")
+  rating       Int      @default(3)
+  notes        String?
+  tags         String[] @default([])
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@map("suppliers")
+}
+
+// ============================================================
+// NOTIFICATIONS
+// ============================================================
+model Notification {
+  id        String    @id @default(uuid())
+  tenantId  String    @map("tenant_id")
+  userId    String    @map("user_id")
+  type      String
+  title     String
+  body      String?
+  data      Json      @default("{}")
+  isRead    Boolean   @default(false) @map("is_read")
+  readAt    DateTime? @map("read_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@index([tenantId, userId])
+  @@index([tenantId, userId, isRead])
+  @@map("notifications")
+}
+
+// ============================================================
+// SETTINGS (per tenant)
+// ============================================================
+model Setting {
+  id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
+  key       String
+  value     Json
+  updatedBy String?  @map("updated_by")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([tenantId, key])
+  @@index([tenantId])
+  @@map("settings")
+}
