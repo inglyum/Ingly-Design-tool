@@ -1,0 +1,141 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  fullName     String
+  role         String   @default("owner")
+  licenseKey   String?
+  licenseValid Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  sessions  Session[]
+  clients   Client[]
+  orders    Order[]
+  sales     Sale[]
+  cashflows CashflowEntry[]
+  quotes    Quote[]
+  products  Product[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Client {
+  id          String   @id @default(cuid())
+  userId      String
+  firstName   String
+  lastName    String
+  companyName String?
+  email       String?
+  phone       String?
+  city        String?
+  type        String   @default("b2c")
+  vatNumber   String?
+  notes       String?
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders      Order[]
+  sales       Sale[]
+  quotes      Quote[]
+}
+
+model Order {
+  id          String    @id @default(cuid())
+  userId      String
+  clientId    String?
+  clientName  String
+  orderNumber String?
+  status      String    @default("backlog")
+  priority    String    @default("normal")
+  totalAmount Float     @default(0)
+  dueDate     DateTime?
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  completedAt DateTime?
+  synced      Boolean   @default(false)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  client      Client?   @relation(fields: [clientId], references: [id])
+}
+
+model Sale {
+  id            String    @id @default(cuid())
+  userId        String
+  clientId      String?
+  clientName    String
+  invoiceNumber String?
+  status        String    @default("bozza")
+  subtotal      Float     @default(0)
+  taxAmount     Float     @default(0)
+  totalAmount   Float     @default(0)
+  issueDate     DateTime  @default(now())
+  dueDate       DateTime?
+  paidAt        DateTime?
+  notes         String?
+  createdAt     DateTime  @default(now())
+  synced        Boolean   @default(false)
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  client        Client?   @relation(fields: [clientId], references: [id])
+}
+
+model Quote {
+  id          String    @id @default(cuid())
+  userId      String
+  clientId    String?
+  clientName  String
+  quoteNumber String?
+  status      String    @default("bozza")
+  totalAmount Float     @default(0)
+  validUntil  DateTime?
+  notes       String?
+  createdAt   DateTime  @default(now())
+  synced      Boolean   @default(false)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  client      Client?   @relation(fields: [clientId], references: [id])
+}
+
+model CashflowEntry {
+  id            String   @id @default(cuid())
+  userId        String
+  type          String
+  amount        Float
+  description   String
+  category      String?
+  paymentMethod String?
+  date          DateTime @default(now())
+  createdAt     DateTime @default(now())
+  synced        Boolean  @default(false)
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  userId      String
+  sku         String?
+  name        String
+  description String?
+  category    String?
+  price       Float    @default(0)
+  cost        Float    @default(0)
+  unit        String   @default("pz")
+  stock       Float    @default(0)
+  minStock    Float    @default(0)
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
