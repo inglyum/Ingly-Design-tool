@@ -12,19 +12,37 @@ const NAV = [
   ]},
   { section: "Pipeline", items: [
     { label: "Smart Quoter", href: "/quoter", icon: "🧮" },
+    { label: "Quote Intelligence", href: "/quote-intel", icon: "🧠" },
+    { label: "Smart Quote Apparel", href: "/apparel", icon: "👕" },
+    { label: "Smart Quote 3D", href: "/print3d", icon: "🖨️" },
     { label: "Ordini & Workflow", href: "/orders", icon: "🔄" },
+    { label: "Workflow Overview", href: "/workflow", icon: "📋" },
     { label: "Vendite & Fatture", href: "/sales", icon: "💰" },
+  ]},
+  { section: "Laser & Produzione", items: [
+    { label: "Calc Laser P3", href: "/laser-calc", icon: "⚡" },
+    { label: "Laser B2B", href: "/laser-b2b", icon: "🔆" },
+    { label: "Risorse Laser", href: "/materials", icon: "🪵" },
+    { label: "Items / Magazzino", href: "/items", icon: "🗄️" },
+    { label: "Catalogo", href: "/products", icon: "🛍️" },
+    { label: "Attrezzature", href: "/equipment", icon: "🔧" },
   ]},
   { section: "Finanza", items: [
     { label: "Cashflow", href: "/cashflow", icon: "💸" },
     { label: "Finance Pro", href: "/finance", icon: "📊" },
     { label: "Costi Fissi", href: "/fixed-costs", icon: "🧾" },
+    { label: "Bank & Funds", href: "/bank-funds", icon: "🏦" },
   ]},
-  { section: "CRM & Magazzino", items: [
+  { section: "CRM & Fornitori", items: [
     { label: "CRM Clienti", href: "/clients", icon: "👥" },
-    { label: "Catalogo", href: "/products", icon: "🛍️" },
-    { label: "Materiali", href: "/materials", icon: "🪵" },
     { label: "Fornitori", href: "/suppliers", icon: "🏭" },
+  ]},
+  { section: "Strumenti", items: [
+    { label: "Lab & Acquisti AI", href: "/lab-setup", icon: "🔬" },
+    { label: "Template Documenti", href: "/template-docs", icon: "📄" },
+    { label: "Idee & Ispirazione", href: "/ideas", icon: "💡" },
+    { label: "Calendario", href: "/calendar", icon: "📅" },
+    { label: "Backup & Ripristino", href: "/backup", icon: "💾" },
   ]},
   { section: "Impostazioni", items: [
     { label: "Impostazioni", href: "/settings", icon: "⚙️" },
