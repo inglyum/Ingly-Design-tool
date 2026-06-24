@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
-
-const prisma = new PrismaClient();
 
 export async function GET(req: NextRequest) {
   const key = req.nextUrl.searchParams.get("key");
@@ -59,6 +57,23 @@ export async function GET(req: NextRequest) {
       prisma.product.create({ data: { userId: user.id, name: "Incisione Laser MDF", sku: "INC-MDF-01", category: "Incisioni", price: 25, cost: 8, unit: "pz" } }),
       prisma.product.create({ data: { userId: user.id, name: "Taglio Acrilico", sku: "TAG-ACR-01", category: "Tagli", price: 35, cost: 12, unit: "m²" } }),
       prisma.product.create({ data: { userId: user.id, name: "Targa Personalizzata", sku: "TAR-PER-01", category: "Targhe", price: 45, cost: 15, unit: "pz" } }),
+    ]);
+
+    // Seed materiali
+    await Promise.all([
+      prisma.material.create({ data: { userId: user.id, name: "MDF 3mm", category: "materiale", unit: "mq", costPerUnit: 8, pricePerUnit: 18, stock: 50, minStock: 10 } }),
+      prisma.material.create({ data: { userId: user.id, name: "Acrilico Trasparente 3mm", category: "materiale", unit: "mq", costPerUnit: 12, pricePerUnit: 28, stock: 20, minStock: 5 } }),
+      prisma.material.create({ data: { userId: user.id, name: "Laser CO2 50W", category: "laser", unit: "ora", costPerUnit: 8, pricePerUnit: 20, stock: 0, minStock: 0 } }),
+      prisma.material.create({ data: { userId: user.id, name: "Manodopera Assemblaggio", category: "manodopera", unit: "ora", costPerUnit: 15, pricePerUnit: 35, stock: 0, minStock: 0 } }),
+      prisma.material.create({ data: { userId: user.id, name: "Vernice Spray RAL", category: "verniciatura", unit: "mq", costPerUnit: 3, pricePerUnit: 8, stock: 30, minStock: 5 } }),
+    ]);
+
+    // Seed costi fissi
+    await Promise.all([
+      prisma.fixedCost.create({ data: { userId: user.id, name: "Affitto Laboratorio", amount: 800, frequency: "monthly", category: "affitto", active: true } }),
+      prisma.fixedCost.create({ data: { userId: user.id, name: "Laser CO2 (Leasing)", amount: 350, frequency: "monthly", category: "macchinari", active: true } }),
+      prisma.fixedCost.create({ data: { userId: user.id, name: "Elettricità", amount: 180, frequency: "monthly", category: "utenze", active: true } }),
+      prisma.fixedCost.create({ data: { userId: user.id, name: "Commercialista", amount: 1200, frequency: "yearly", category: "software", active: true } }),
     ]);
 
     return NextResponse.json({

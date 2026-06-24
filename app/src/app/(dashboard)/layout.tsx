@@ -28,27 +28,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!ready) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div style={{ minHeight: "100vh", background: "#060d1a" }}>
       <Sidebar user={user ?? undefined} />
-      <div className="ml-56">
+      <div style={{ marginLeft: 220, transition: "margin-left 0.2s" }}>
         {/* Topbar */}
-        <header className="sticky top-0 z-10 bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
-          <div />
-          <div className="flex items-center gap-3">
-            {!online && (
-              <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-medium">
-                ⚠️ Offline — i dati si sincronizzano al ripristino
-              </span>
-            )}
-            {online && (
-              <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">● Online</span>
-            )}
-            <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
-              {user?.fullName?.[0]?.toUpperCase() || "U"}
-            </div>
+        <header style={{ position: "sticky", top: 0, zIndex: 10, background: "#0a0f1a", borderBottom: "1px solid #1e293b", padding: "10px 24px", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 12 }}>
+          {!online && (
+            <span style={{ fontSize: 11, background: "#f59e0b20", color: "#f59e0b", padding: "4px 10px", borderRadius: 20, fontWeight: 600 }}>⚠️ Offline</span>
+          )}
+          {online && (
+            <span style={{ fontSize: 11, background: "#22c55e20", color: "#22c55e", padding: "4px 10px", borderRadius: 20, fontWeight: 600 }}>● Online</span>
+          )}
+          <div style={{ width: 32, height: 32, background: "linear-gradient(135deg,#6366f1,#818cf8)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12, fontWeight: 800 }}>
+            {user?.fullName?.[0]?.toUpperCase() || "U"}
           </div>
         </header>
-        <main className="p-6">{children}</main>
+        <main>{children}</main>
       </div>
     </div>
   );

@@ -18,13 +18,16 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  sessions  Session[]
-  clients   Client[]
-  orders    Order[]
-  sales     Sale[]
-  cashflows CashflowEntry[]
-  quotes    Quote[]
-  products  Product[]
+  sessions      Session[]
+  clients       Client[]
+  orders        Order[]
+  sales         Sale[]
+  cashflows     CashflowEntry[]
+  quotes        Quote[]
+  products      Product[]
+  materials     Material[]
+  suppliers     Supplier[]
+  fixedCosts    FixedCost[]
 }
 
 model Session {
@@ -44,10 +47,16 @@ model Client {
   companyName String?
   email       String?
   phone       String?
+  address     String?
   city        String?
+  zip         String?
+  country     String?
   type        String   @default("b2c")
   vatNumber   String?
+  fiscalCode  String?
   notes       String?
+  tags        String?
+  totalSpent  Float    @default(0)
   createdAt   DateTime @default(now())
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   orders      Order[]
@@ -61,11 +70,15 @@ model Order {
   clientId    String?
   clientName  String
   orderNumber String?
+  title       String?
   status      String    @default("backlog")
   priority    String    @default("normal")
   totalAmount Float     @default(0)
+  cost        Float     @default(0)
   dueDate     DateTime?
   notes       String?
+  tags        String?
+  quoteId     String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   completedAt DateTime?
@@ -81,12 +94,15 @@ model Sale {
   clientName    String
   invoiceNumber String?
   status        String    @default("bozza")
+  lines         Json?
   subtotal      Float     @default(0)
+  taxRate       Float     @default(22)
   taxAmount     Float     @default(0)
   totalAmount   Float     @default(0)
   issueDate     DateTime  @default(now())
   dueDate       DateTime?
   paidAt        DateTime?
+  channel       String?
   notes         String?
   createdAt     DateTime  @default(now())
   synced        Boolean   @default(false)
@@ -95,19 +111,31 @@ model Sale {
 }
 
 model Quote {
-  id          String    @id @default(cuid())
+  id          String      @id @default(cuid())
   userId      String
   clientId    String?
   clientName  String
+  title       String?
   quoteNumber String?
-  status      String    @default("bozza")
-  totalAmount Float     @default(0)
+  status      String      @default("bozza")
+  lines       Json?
+  subtotal    Float       @default(0)
+  costTotal   Float       @default(0)
+  taxRate     Float       @default(22)
+  taxAmount   Float       @default(0)
+  totalAmount Float       @default(0)
+  markup      Float       @default(100)
+  discount    Float       @default(0)
+  includeVat  Boolean     @default(true)
+  currency    String      @default("EUR")
   validUntil  DateTime?
   notes       String?
-  createdAt   DateTime  @default(now())
-  synced      Boolean   @default(false)
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  client      Client?   @relation(fields: [clientId], references: [id])
+  priority    String      @default("Media")
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  synced      Boolean     @default(false)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  client      Client?     @relation(fields: [clientId], references: [id])
 }
 
 model CashflowEntry {
@@ -118,6 +146,7 @@ model CashflowEntry {
   description   String
   category      String?
   paymentMethod String?
+  reference     String?
   date          DateTime @default(now())
   createdAt     DateTime @default(now())
   synced        Boolean  @default(false)
@@ -136,6 +165,53 @@ model Product {
   unit        String   @default("pz")
   stock       Float    @default(0)
   minStock    Float    @default(0)
+  supplier    String?
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Material {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  category    String   @default("materiale")
+  unit        String   @default("mq")
+  costPerUnit Float    @default(0)
+  pricePerUnit Float   @default(0)
+  stock       Float    @default(0)
+  minStock    Float    @default(0)
+  supplier    String?
+  notes       String?
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Supplier {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  contactName String?
+  email       String?
+  phone       String?
+  address     String?
+  city        String?
+  vatNumber   String?
+  category    String?
+  notes       String?
+  rating      Int      @default(0)
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model FixedCost {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  amount      Float
+  frequency   String   @default("monthly")
+  category    String?
+  notes       String?
+  active      Boolean  @default(true)
   createdAt   DateTime @default(now())
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
