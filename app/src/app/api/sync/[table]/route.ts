@@ -21,10 +21,11 @@ async function getUser(req: NextRequest) {
   return payload.userId as string;
 }
 
-export async function POST(req: NextRequest, { params }: { params: { table: string } }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ table: string }> }) {
   try {
     const userId = await getUser(req);
-    const table = TABLE_MAP[params.table];
+    const { table: tableName } = await params;
+    const table = TABLE_MAP[tableName];
     if (!table) return NextResponse.json({ error: "Tabella non valida" }, { status: 400 });
 
     const body = await req.json();
@@ -43,10 +44,11 @@ export async function POST(req: NextRequest, { params }: { params: { table: stri
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { table: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ table: string }> }) {
   try {
     const userId = await getUser(req);
-    const table = TABLE_MAP[params.table];
+    const { table: tableName } = await params;
+    const table = TABLE_MAP[tableName];
     if (!table) return NextResponse.json({ error: "Tabella non valida" }, { status: 400 });
 
     const url = new URL(req.url);
