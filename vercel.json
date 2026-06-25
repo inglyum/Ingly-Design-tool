@@ -1,0 +1,6 @@
+{
+  "rootDirectory": "app",
+  "buildCommand": "npx prisma generate && npx prisma db push && npx next build",
+  "installCommand": "npm install",
+  "framework": "nextjs"
+}
